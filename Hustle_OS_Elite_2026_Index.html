@@ -1,0 +1,169 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hustle OS Elite 2026</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  <style>
+    :root {
+      --primary:#6366f1;
+      --accent:#10b981;
+      --bg:#0f172a;
+      --card:#1e293b;
+      --text:#f1f5f9;
+    }
+    *{box-sizing:border-box;font-family:Inter,system-ui;}
+    body{margin:0;background:var(--bg);color:var(--text);padding:20px;}
+    h1{text-align:center;margin-bottom:10px;}
+    .card{
+      background:var(--card);
+      padding:20px;
+      border-radius:16px;
+      margin:15px auto;
+      box-shadow:0 10px 25px rgba(0,0,0,.3);
+    }
+    .btn{
+      padding:10px 14px;
+      border-radius:10px;
+      border:none;
+      cursor:pointer;
+      margin:5px 0;
+    }
+    .primary{background:var(--primary);color:white;}
+    .outline{background:transparent;border:1px solid var(--primary);color:var(--primary);}
+    input{padding:8px;border-radius:8px;border:none;width:100%;}
+    canvas{max-width:100%;}
+  </style>
+</head>
+<body>
+
+<h1>Hustle OS Elite 2026</h1>
+
+<div id="cards"></div>
+
+<div class="card">
+  <h3>Financial Overview</h3>
+  <canvas id="chart"></canvas>
+</div>
+
+<div class="card" style="width:100%; max-width:620px; margin:20px auto;">
+  <h3>Settings & Branding</h3>
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+    <input type="text" placeholder="Business Name" onchange="updateBiz('name', this.value)">
+    <input type="text" placeholder="Tagline" onchange="updateBiz('tagline', this.value)">
+  </div>
+  <input type="file" accept="image/*" onchange="handleLogo(this)" style="margin-top:10px;">
+</div>
+
+<script>
+let state = {
+  target:1000,
+  hustles:[{n:"Main Hustle", r:0, e:0, c:0, d:0}],
+  biz:{name:"", tagline:"", logo:null}
+};
+
+const cards = document.getElementById("cards");
+let goalReached=false;
+
+function save(){ localStorage.setItem("hustle_os", JSON.stringify(state)); }
+function load(){
+  const data = localStorage.getItem("hustle_os");
+  if(data) state = JSON.parse(data);
+}
+load();
+
+function fmt(n){ return "$" + n.toFixed(2); }
+
+function log(i, units){
+  state.hustles[i].r += units * 10;
+  render();
+}
+
+function expense(i){
+  state.hustles[i].e += 5;
+  render();
+}
+
+function notifySuccess(){
+  if(navigator.vibrate){
+    navigator.vibrate([100,50,100,50,300]);
+  }
+  const audio = new Audio("https://assets.mixkit.co/sfx/preview/mixkit-achievement-bell-600.mp3");
+  audio.play().catch(()=>{});
+}
+
+function updateBiz(key,value){
+  state.biz[key]=value;
+  save();
+}
+
+function handleLogo(input){
+  const reader = new FileReader();
+  reader.onload = function(e){
+    state.biz.logo = e.target.result;
+    save();
+  };
+  reader.readAsDataURL(input.files[0]);
+}
+
+function render(){
+  save();
+  cards.innerHTML="";
+  let net=0;
+
+  state.hustles.forEach((h,i)=>{
+    let n=h.r-h.e;
+    net+=n;
+
+    cards.innerHTML+=`
+    <div class="card">
+      <h3>${h.n}</h3>
+      <strong style="color:var(--accent); font-size:1.5rem;">${fmt(n)}</strong>
+      <div style="margin-top:12px;">
+        <button class="btn primary" onclick="log(${i},1)">Record Sale</button>
+        <div style="text-align:center; margin-top:4px;">
+          <span onclick="log(${i},10)" style="font-size:0.7rem;color:var(--primary);cursor:pointer;text-decoration:underline;">
+          + Log Bulk Units
+          </span>
+        </div>
+      </div>
+      <button class="btn outline" style="font-size:0.75rem;" onclick="expense(${i})">Add Expense</button>
+    </div>`;
+  });
+
+  let pct=Math.min(100,(net/state.target)*100);
+
+  if(pct>=100 && !goalReached){
+    goalReached=true;
+    notifySuccess();
+    confetti({particleCount:200,spread:100,origin:{y:0.6}});
+  }else if(pct<100){
+    goalReached=false;
+  }
+
+  updateChart(net);
+}
+
+let chart;
+function updateChart(net){
+  const ctx=document.getElementById("chart").getContext("2d");
+  if(chart) chart.destroy();
+  chart=new Chart(ctx,{
+    type:"doughnut",
+    data:{
+      labels:["Net Income","Remaining to Target"],
+      datasets:[{
+        data:[net, Math.max(0,state.target-net)]
+      }]
+    }
+  });
+}
+
+render();
+</script>
+
+</body>
+</html>
